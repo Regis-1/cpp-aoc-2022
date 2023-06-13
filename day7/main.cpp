@@ -4,6 +4,8 @@
 #include <string>
 #include <unordered_map>
 #include <sstream>
+#include <functional>
+#include <numeric>
 
 struct File {
     File* parent_;
@@ -13,7 +15,7 @@ struct File {
     bool is_dir_;
 
     File() = delete;
-    File(File* parent, int size, bool is_dir)
+    File(File* parent, int size = 0, bool is_dir = true)
         : parent_(parent), size_(size), is_dir_(is_dir) {}
 };
 
@@ -79,11 +81,30 @@ File create_file_structure(std::vector<std::string>& data) {
     return file_str;
 }
 
-void calculate_all_sizes(File& fs) {
-    std::vector<File*> fs_stack;
-    fs_stack.push_back(&fs);
+int calculate_all_sizes(File& fs) {
+    int total_size = 0;
 
-    // TODO
+    for (auto child_pair : fs.children_) {
+        File* child = child_pair.second;
+        if (!child->is_dir_)
+            total_size += child->size_;
+        else
+            total_size += calculate_all_sizes(*child);
+    }
+
+    fs.size_ = total_size;
+    return total_size;
+}
+
+void get_with_filter(File& fs, std::vector<int>& list, std::function<bool(int)> filter_func) {
+    if (filter_func(fs.size_))
+        list.push_back(fs.size_);
+
+    for (auto child_pair : fs.children_) {
+        File* child = child_pair.second;
+        if (child->is_dir_)
+            get_with_filter(*child, list, filter_func);
+    }
 }
 
 std::vector<std::string> load_file(const char* path) {
@@ -108,7 +129,15 @@ int main(int argc, char** argv) {
     std::vector<std::string> data = load_file(argv[1]);
 
     File files_structure = create_file_structure(data);
-    calculate_all_sizes(files_structure);
+    int fs_total_size = calculate_all_sizes(files_structure);
+
+    std::cout << "Total size of file structure: " << fs_total_size << std::endl;
+
+    std::vector<int> dir_list;
+    get_with_filter(files_structure, dir_list, [](int size){ return size <= 100000; });
+
+    std::cout << "Sum of dirs with total size at most 100000: " <<
+        std::accumulate(dir_list.begin(), dir_list.end(), 0) << std::endl;
     
     return 0;
 }
