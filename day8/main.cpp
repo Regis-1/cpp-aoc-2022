@@ -2,17 +2,11 @@
 #include <fstream>
 #include <vector>
 #include <string>
+#include <cmath>
+#include <utility>
+#include <numeric>
 
 typedef std::vector<std::vector<int>> t_forest;
-
-struct Direction {
-    std::vector<int> north{-1, 0};
-    std::vector<int> east{0, 1};
-    std::vector<int> south{1, 0};
-    std::vector<int> norith{0, -1};
-};
-
-Direction dirs;
 
 t_forest parse_input_to_forest(std::vector<std::string>& input) {
     t_forest forest;
@@ -28,15 +22,40 @@ t_forest parse_input_to_forest(std::vector<std::string>& input) {
     return forest;
 }
 
-void update_vmat_by_direction(const t_forest& f, t_forest& vm, std::vector<int> d) {
-    int r = d[0];
-    int c = d[1];
+void check_if_visible(int idr, int idc, const t_forest& f, t_forest& vm) {
+    int dim = f.size() - 1;
+    std::pair<int, int> dirs[4] = {{-1, 0}, {0, 1}, {1, 0}, {0, -1}};
+    int tree_height = f[idr][idc];
 
-    bool v_search = c != 0 ? true : false;
+    for (auto d : dirs) {
+        int r = idr;
+        int c = idc;
+        
+        while (r != 0 && r != dim && c != 0 && c != dim) {
+            r += d.first;
+            c += d.second;
 
-    for (int i = 0; i < forest.size(); i++) {
-        int last_tree = -1;
+            if (tree_height <= f[r][c]) {
+                vm[idr][idc] = 0;
+                break;
+            }
+            else
+                vm[idr][idc] = 1;
+        }
+
+        // if is visible from at least one direction end loop
+        if (vm[idr][idc] == 1 )
+            break;
     }
+}
+
+void update_vmat_by_direction(const t_forest& forest, t_forest& vmat) {
+    int forest_dim = forest.size() - 1;
+
+    for (int i = 1; i < forest_dim; i++)
+        for (int j = 1; j < forest_dim; j++) {
+            check_if_visible(i, j, forest, vmat);
+        }
 }
 
 t_forest get_visibility_matrix(const t_forest& forest) {
@@ -47,18 +66,22 @@ t_forest get_visibility_matrix(const t_forest& forest) {
         int idx = std::distance(forest.begin(), row);
         vmat.push_back(std::vector<int>());
         for (auto tree : *row)
-            vmat[idx].push_back(0);
+            vmat[idx].push_back(1);
     }
 
-    update_vmat_by_direction(forest, vmat, dirs.south);
+    update_vmat_by_direction(forest, vmat);
 
     return vmat;
 }
 
 int count_visible_trees(const t_forest& forest) {
     t_forest visibility_matrix = get_visibility_matrix(forest);
+    int total_visible = 0;
 
-    return 0;
+    for (auto row : visibility_matrix)
+        total_visible += std::accumulate(row.begin(), row.end(), 0);
+
+    return total_visible;
 }
 
 std::vector<std::string> load_file(const char* path) {
@@ -85,6 +108,8 @@ int main(int argc, char** argv) {
     t_forest forest = parse_input_to_forest(data);
 
     int visible_trees_num = count_visible_trees(forest);
+
+    std::cout << "Total visible trees: " << visible_trees_num << std::endl;
     
     return 0;
 }
