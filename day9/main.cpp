@@ -28,7 +28,9 @@ struct Tail {
 
     std::set<std::pair<int, int>> visited_cells_;
 
-    Tail() : x_(0), y_(0) {}
+    Tail() : x_(0), y_(0) {
+        visited_cells_.insert({x_, y_});
+    }
 
     void move(const Head& h) {
         int dif_x = h.x_ - x_;
@@ -36,7 +38,13 @@ struct Tail {
 
         // check if the tail should move
         if (dif_x <= -2 || dif_x >= 2 || dif_y <= -2 || dif_y >= 2) {
-            // TODO
+            int move_x = dif_x > 0 ? 1 : (dif_x == 0 ? 0 : -1);
+            int move_y = dif_y > 0 ? 1 : (dif_y == 0 ? 0 : -1);
+            
+            x_ += move_x;
+            y_ += move_y;
+
+            visited_cells_.insert({x_, y_});
         }
     }
 };
@@ -47,16 +55,16 @@ std::vector<Move> parse_input(std::vector<std::string> input) {
     for (auto line : input) {
         Move move;
         switch(line[0]) {
-            case 'R':
+            case 'R': // right
                 move.direction_ = {1, 0};
                 break;
-            case 'L':
+            case 'L': // left
                 move.direction_ = {-1, 0};
                 break;
-            case 'U':
+            case 'U': // up
                 move.direction_ = {0, 1};
                 break;
-            case 'D':
+            case 'D': // down
                 move.direction_ = {0, -1};
                 break;
         }
@@ -72,10 +80,11 @@ int process_moves(const std::vector<Move>& move_list) {
     Head h;
     Tail t;
 
-    for (auto m : move_list) {
-        h.move(m);
-        t.move(h);
-    }
+    for (auto m : move_list)
+        for (int i = 0; i < m.amount_; i++) {
+            h.move(m);
+            t.move(h);
+        }
 
     return t.visited_cells_.size();
 }
@@ -104,6 +113,8 @@ int main(int argc, char** argv) {
     std::vector<Move> move_list = parse_input(data);
 
     int tail_unique_cells = process_moves(move_list);
+    std::cout << "The tail has visited " << tail_unique_cells << " unique cells."
+        << std::endl;
     
     return 0;
 }
