@@ -3,6 +3,8 @@
 #include <vector>
 #include <string>
 #include <sstream>
+#include <numeric>
+#include <unordered_map>
 
 struct Instruction {
     bool modify_reg_;
@@ -16,26 +18,47 @@ struct Instruction {
         : modify_reg_(false), value_(0), cycle_duration_(cycle_duration) {}
 };
 
+bool in_range(int low, int high, int val) {
+    return ((unsigned int)(val-low) <= (high-low));
+}
+
 class DeviceVideoSystem {
 private:
-    int cycle_{0};
+    int cycle_{1};
     int reg_value_{1};
+    std::unordered_map<int, int> sig_timeline_;
 
     void execute_instruction(const Instruction& inst) {
+        cycle_ += inst.cycle_duration_;
+
+        if (inst.modify_reg_)
+            reg_value_ += inst.value_;
+            
+        sig_timeline_[cycle_] = reg_value_;
     }
 
 public:
-    void execute_instructions(const std::vector<Instruction>& insts) {
-        for (auto inst : insts)
-            execute_instruction(inst);
-    }
+    int measure_start_{20};
+    int measures_offset_{40};
 
     std::vector<int> exec_inst_with_signal_measures(const std::vector<Instruction>& insts,
             int num_of_measures) {
 
         std::vector<int> measures;
 
-        // TODO
+        for (auto i : insts)
+            execute_instruction(i);
+
+        for (int i = 0; i <= measure_start_ + measures_offset_ * (num_of_measures - 1); i++) {
+            for (int j = 0; j < num_of_measures; j++)
+                if (i == measure_start_ + measures_offset_ * j) {
+                    int measured_value = sig_timeline_[i];
+                    if (measured_value == 0)
+                        measures.push_back(sig_timeline_[i-1] * i);
+                    else
+                        measures.push_back(measured_value * i);
+                }
+        }
 
         return measures;
     }
@@ -84,7 +107,10 @@ int main(int argc, char** argv) {
 
     std::vector<Instruction> instructions = parse_input(data);
     DeviceVideoSystem vid_sys;
-    vid_sys.exec_inst_with_signal_measures(instructions, 6);
+    std::vector<int> measures = vid_sys.exec_inst_with_signal_measures(instructions, 6);
+
+    std::cout << "The sum of those six signals equals: "
+        << std::accumulate(measures.begin(), measures.end(), 0) << std::endl;
     
     return 0;
 }
